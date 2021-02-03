@@ -22,7 +22,7 @@ class VolumeInfo:
         self.inverted = inverted
 
 try:
-    path_volume = os.environ['VOLUME_PATH1']
+    path_volume = os.environ['VOLUME_PATH']
 except:
     path_volume = './'
 
