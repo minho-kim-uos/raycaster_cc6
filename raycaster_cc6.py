@@ -227,14 +227,22 @@ class FBO_bbox:
 
 ###################################################################################################################
 class QuadFull:
+    RENDER_MODE_BLINN_PHONG = 0
+    RENDER_MODE_CURVATURE = 1
+    NUM_RENDER_MODE = 2
     def __init__(self, volume, size_fbo):
         self.tex_bbox_back = volume.bbox.fbo.buf_back
         self.tex_bbox_front = volume.bbox.fbo.buf_front
         self.tex_volume = volume.texid
 
-        uniforms = ['tex_back', 'tex_front', 'tex_volume', 'scale_axes', 'dim', 'dim_max', 'level', 'scale_step', 'MV']
+        self.render_mode = self.RENDER_MODE_CURVATURE
+
+        uniforms = ['tex_back', 'tex_front', 'tex_volume', 'scale_axes', 'dim', 
+                    'level', 'scale_step', 'MV', 'render_mode', 'tex_colormap_2d']
 
         self.prog = Program('raycast_simple.vert', 'cc6_raycast_open.frag', uniforms)
+
+        self.init_colormap()
 
         self.init_vao()
 
@@ -269,21 +277,41 @@ class QuadFull:
         glBindTexture(GL_TEXTURE_2D, self.tex_bbox_front)
         glActiveTexture(GL_TEXTURE2)
         glBindTexture(GL_TEXTURE_3D, self.tex_volume)
+        glActiveTexture(GL_TEXTURE3)
+        glBindTexture(GL_TEXTURE_2D, self.tex_colormap_2d)
 
         glUseProgram(self.prog.id)
 
         glUniform1i(self.prog.uniform_locs['tex_back'], 0)   
         glUniform1i(self.prog.uniform_locs['tex_front'], 1) 
         glUniform1i(self.prog.uniform_locs['tex_volume'], 2)
+        glUniform1i(self.prog.uniform_locs['tex_colormap_2d'], 3)
         glUniform1f(self.prog.uniform_locs['level'], level)
         glUniform3f(self.prog.uniform_locs['scale_axes'], volume.bbox.scale_axes[0], volume.bbox.scale_axes[1], volume.bbox.scale_axes[2])
         glUniform3f(self.prog.uniform_locs['dim'], volume.info.dim[0], volume.info.dim[1], volume.info.dim[2])
         glUniform1f(self.prog.uniform_locs['scale_step'], self.scale_step)
         glUniformMatrix4fv(self.prog.uniform_locs['MV'], 1, GL_FALSE, MV)
+        glUniform1i(self.prog.uniform_locs['render_mode'], self.render_mode);
 
         glBindVertexArray(self.vao)
         glDrawArrays(GL_TRIANGLE_FAN, 0, 4)
         glBindVertexArray(0)
+
+#------------------------------------------------------------------------------------------------------------------------ 
+    def init_colormap(self):
+# 3x3 colormap for min-max curvature
+        colormap_2d = np.array([[ 1, 0, 0], [ 1, 1, 0], [0,1,0],
+                                [.5,.5,.5], [.5,.5,.5], [0,1,1],
+                                [.5,.5,.5], [.5,.5,.5], [0,0,1]], dtype=np.float32)
+        self.tex_colormap_2d = glGenTextures(1)
+        glBindTexture(GL_TEXTURE_2D, self.tex_colormap_2d)
+        glPixelStorei(GL_UNPACK_ALIGNMENT,1)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE)
+        glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE)
+
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 3, 3, 0, GL_RGB, GL_FLOAT, colormap_2d)
 
 ###################################################################################################################
 class Program:
@@ -348,11 +376,16 @@ class Scene:
         self.position_x = 0
         self.position_y = 0
 
-        volname = 'ML_25'
+
+#        volume_name = 'ML_20'
+#        volume_name = 'ML_25'
+#        volume_name = 'ML_30'
+        volume_name = 'ML_50'
+#        volume_name = 'ML_100'
 
         fbo_size = (512, 512)
 
-        self.volume = Volume(volumes[volname], fbo_size)
+        self.volume = Volume(volumes[volume_name], fbo_size)
 
         self.quad_full = QuadFull(self.volume, fbo_size)
 
@@ -360,7 +393,7 @@ class Scene:
 
         self.texid = [self.volume.bbox.fbo.buf_front, self.volume.bbox.fbo.buf_back]
         
-        self.level = volumes[volname].level
+        self.level = volumes[volume_name].level
 
 #------------------------------------------------------------------------------------------------------------------------ 
     def refresh_MVP(self):
@@ -437,6 +470,9 @@ class RenderWindow:
                 self.scene.view_angle = self.scene.view_angle + 1
                 self.scene.refresh_MVP()
                 print(self.scene.view_angle)
+            elif key == glfw.KEY_TAB:
+                self.scene.quad_full.render_mode = (self.scene.quad_full.render_mode + 1) % self.scene.quad_full.NUM_RENDER_MODE
+                print(self.scene.quad_full.render_mode)
         
     def onSize(self, win, width, height):
         self.aspect = width/float(height)
