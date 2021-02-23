@@ -27,11 +27,8 @@ except:
     path_volume = './'
 
 volumes = {
-    'ML_20' :VolumeInfo(path_volume + 'ML_20_f32.raw', np.float32, (39,39,39), (1,1,1), 0.5, False),
     'ML_25' :VolumeInfo(path_volume + 'ML_25_f32.raw', np.float32, (49,49,49), (1,1,1), 0.5, False),
-    'ML_30' :VolumeInfo(path_volume + 'ML_30_f32.raw', np.float32, (59,59,59), (1,1,1), 0.5, False),
     'ML_50' :VolumeInfo(path_volume + 'ML_50_f32.raw', np.float32, (99,99,99), (1,1,1), 0.5, False),
-    'ML_100' :VolumeInfo(path_volume + 'ML_100_f32.raw', np.float32, (199,199,199), (1,1,1), 0.5, False),
     }
 
 ###################################################################################################################
@@ -377,13 +374,10 @@ class Scene:
         self.position_y = 0
 
 
-#        volume_name = 'ML_20'
-#        volume_name = 'ML_25'
-#        volume_name = 'ML_30'
-        volume_name = 'ML_50'
-#        volume_name = 'ML_100'
+        volume_name = 'ML_25'
+#        volume_name = 'ML_50'
 
-        fbo_size = (512, 512)
+        fbo_size = (width, height)
 
         self.volume = Volume(volumes[volume_name], fbo_size)
 
@@ -429,13 +423,16 @@ class RenderWindow:
         self.win = glfw.create_window(self.width, self.height, 'raycaster (cc6)', None, None)
         glfw.make_context_current(self.win)
 
+        # for retina display...
+        self.fb_width, self.fb_height = glfw.get_framebuffer_size(self.win)
+
         glEnable(GL_DEPTH_TEST)
         glClearColor(0.0, 0.0, 0.0,0.0)
 
         glfw.set_key_callback(self.win, self.onKeyboard)
         glfw.set_window_size_callback(self.win, self.onSize)        
 
-        self.scene = Scene(self.width, self.height)
+        self.scene = Scene(self.fb_width, self.fb_height)
 
         self.exitNow = False
         

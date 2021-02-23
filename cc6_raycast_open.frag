@@ -1317,8 +1317,8 @@ TMaterial get_material(vec3 g, float d2[6], int face)
 
 void main() {
 
-    vec3 start = texture(tex_front, vTexCoord).xyz*dim;
-    vec3 end = texture(tex_back, vTexCoord).xyz*dim;
+    vec3 start = texture(tex_front, vTexCoord).xyz*dim - vec3(0.5);
+    vec3 end = texture(tex_back, vTexCoord).xyz*dim - vec3(0.5);
     
     vec3	p = start;
     vec3	p_prev;
